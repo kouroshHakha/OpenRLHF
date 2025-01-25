@@ -86,20 +86,78 @@ def strip_sequence(text, pad_token, eos_token):
 #         )
 #         return {k: v.to(device) for k, v in batch.items()}
 
+
+def compute_format_reward(text):
+    if not text:
+        return 0.0
+    
+    reward = 1.0
+    
+    # Check boxed answer pattern
+    boxed_pattern = r"boxed{.+}"
+    if not re.search(boxed_pattern, text.strip()):
+        reward -= 0.3
+    
+    # Check step formats
+    steps = re.finditer(r"## Step \d+: .+?\n(.+?)(?=## Step|\Z)", text, re.DOTALL)
+    total_steps = len(re.findall(r"## Step \d+:", text))
+    
+    if total_steps == 0:
+        return 0.0
+        
+    incorrect_steps = 0
+    for step in steps:
+        step_content = step.group(1).strip()
+        # Check for double newline between reasoning steps
+        if not step_content or not re.match(r".+\n\n", step_content + "\n\n"):
+            incorrect_steps += 1
+    
+    if incorrect_steps > 0:
+        reward -= 0.7 * (incorrect_steps / total_steps)
+    
+    return max(0.0, reward)
+
+def compute_accuracy_reward(prediction_text, desired_answer):
+    # accuracy reward
+    pred_extracted = extract_answer(prediction_text)
+    pred_stripped = strip_answer_string(pred_extracted)
+
+    # exp_extracted = extract_answer(exp)
+    exp = strip_answer_string(desired_answer)
+
+    accuracy_reward = float(math_equal(pred_stripped, exp))
+
+    return accuracy_reward
+
+def strip_assistant_response(text):
+    pattern = r'<\|start_header_id\|>assistant<\|end_header_id\|>\n\n(.*?)<\|eot_id\|>'
+    match = re.search(pattern, text, re.DOTALL)
+    return match.group(1) if match else None
+
+
 def compute_math_rewards(predictions: List[str], expecteds: List[str]) -> List[float]:
 
     assert len(predictions) == len(expecteds), "Length mismatch between expecteds and predictions"
 
     rewards = []
     for pred, exp in zip(predictions, expecteds):
-        pred_extracted = extract_answer(pred)
-        pred_stripped = strip_answer_string(pred_extracted)
 
-        # exp_extracted = extract_answer(exp)
-        exp = strip_answer_string(exp)
+        if "<|start_header_id|>assistant" in pred:
+            pred = strip_assistant_response(pred)
 
-        reward = float(math_equal(pred_stripped, exp))
+            if pred is None:
+                rewards.append(0.)
+                continue
+        
+
+        # format reward
+        format_reward = compute_format_reward(pred)
+        accuracy_reward = compute_accuracy_reward(pred, exp)
+
+
+        reward = (format_reward + accuracy_reward) / 2
         rewards.append(reward)
+        # rewards.append({"reward": reward, "accuracy_reward": accuracy_reward, "format": format_reward})
 
     return rewards
 

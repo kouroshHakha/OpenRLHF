@@ -659,7 +659,7 @@ class RemoteExperienceMaker(NaiveExperienceMaker):
         )
 
         # Expand prompt list based on the number of samples per prompt
-        prompt_strs = all_prompt["prompt"]
+        prompt_strs = all_prompts["prompt"]
         prompt_strs = sum([[prompt] * args.n_samples_per_prompt for prompt in prompt_strs], [])
         all_prompt_token_ids = self.tokenize_fn(prompt_strs, self.prompt_max_len, padding=False)["input_ids"]
 
@@ -675,12 +675,12 @@ class RemoteExperienceMaker(NaiveExperienceMaker):
 
         # Retrieve and combine results from all outputs
         all_outputs = sum(ray.get(all_output_refs), [])
-        breakpoint()
 
         samples_list = []
         for i in range(0, len(all_outputs), args.micro_rollout_batch_size):
-            outputs = all_outputs[i : i + self.strategy.args.micro_rollout_batch_size]
-            meta_data = all_prompts[i : i + self.strategy.args.micro_rollout_batch_size]
+            indices = slice(i, i + self.strategy.args.micro_rollout_batch_size )
+            outputs = all_outputs[indices]
+            meta_data = {k: v[indices] for k, v in all_prompts.items()}
             if not self.packing_samples:
                 # NOTE: concat all outputs to following format:
                 #

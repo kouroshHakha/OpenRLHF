@@ -237,7 +237,6 @@ class PPOTrainer(ABC):
                         self.strategy.print(output)
                     self.replay_buffer.append(experience)
 
-                breakpoint()
                 torch.cuda.empty_cache()
                 self.replay_buffer.normalize("advantages", self.strategy)
                 status = self.ppo_train(steps)

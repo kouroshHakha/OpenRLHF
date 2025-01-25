@@ -3,6 +3,7 @@ import math
 import os
 import socket
 from typing import Callable, Dict, List
+import time
 
 import deepspeed
 import ray
@@ -140,6 +141,7 @@ class ActorPPOTrainer(PPOTrainer):
         torch.cuda.empty_cache()
         model = self.actor.model.module
         count, num_params = 0, len(list(model.named_parameters()))
+        s = time.time()
         for name, param in model.named_parameters():
             count += 1  # empty_cache at last param
 
@@ -157,6 +159,9 @@ class ActorPPOTrainer(PPOTrainer):
                     torch.distributed.broadcast(param.data, 0, group=self._model_update_group)
                     ray.get(refs)
         torch.distributed.barrier()
+
+        if self.strategy.is_rank_0():
+            print(f"vllm weight synced in {time.time() - s}")
 
     def _save_checkpoint(self, args, tag, client_states):
         # call remote critic
