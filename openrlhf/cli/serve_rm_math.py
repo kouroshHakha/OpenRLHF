@@ -95,10 +95,10 @@ def compute_math_rewards(predictions: List[str], expecteds: List[str]) -> List[f
         pred_extracted = extract_answer(pred)
         pred_stripped = strip_answer_string(pred_extracted)
 
-        exp_extracted = extract_answer(exp)
-        exp_stripped = strip_answer_string(exp_extracted)
+        # exp_extracted = extract_answer(exp)
+        exp = strip_answer_string(exp)
 
-        reward = float(math_equal(pred_stripped, exp_stripped))
+        reward = float(math_equal(pred_stripped, exp))
         rewards.append(reward)
 
     return rewards
@@ -130,12 +130,11 @@ if __name__ == "__main__":
     @app.post("/get_reward_math")
     async def get_reward(request: Request):
         data = await request.json()
-        predictions = data.get("prediction")
-        expecteds = data.get("solution")
-        # rewards = reward_model.get_reward(queries)
+        predictions = data.get("query")
+        meta_data = data.get("meta_data", {})
+        ground_truths: List[str] = meta_data.get("gt")
 
-        rewards = compute_math_rewards(predictions, expecteds)
-
+        rewards = compute_math_rewards(predictions, ground_truths)
         result = {"rewards": rewards}
         logger.info(f"Sent JSON: {result}")
         return JSONResponse(result)

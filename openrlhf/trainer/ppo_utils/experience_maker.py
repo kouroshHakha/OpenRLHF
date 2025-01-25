@@ -2,7 +2,7 @@ import time
 from abc import ABC
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Dict, Any
 
 import ray
 import torch
@@ -113,6 +113,7 @@ class Samples:
     packed_seq_lens: Optional[torch.Tensor]
     response_length: torch.Tensor
     total_length: torch.Tensor
+    meta_data: List[Dict[str, Any]]
 
 
 class NaiveExperienceMaker(ABC):
@@ -490,6 +491,7 @@ class RemoteExperienceMaker(NaiveExperienceMaker):
         in which actor will be used to generate samples.
         """
         if self.vllm_engines is None:
+            raise ValueError("Should not have reached here")
             return super().generate_samples(all_prompts, **generate_kwargs)
 
         return self._generate_vllm(all_prompts, **generate_kwargs)
@@ -540,6 +542,7 @@ class RemoteExperienceMaker(NaiveExperienceMaker):
         r_refs = []
         # support remote RM API with ray
         if not self.remote_rm_url:
+            # TODO (This does not support metadata stuff)
             for rm in self.reward_model:
                 r_refs.append(rm.forward.remote(sequences_cpu, attention_mask_cpu, packed_seq_lens=packed_seq_lens))
         else:
@@ -556,7 +559,7 @@ class RemoteExperienceMaker(NaiveExperienceMaker):
                 queries = self.tokenizer.batch_decode(sequences_list, skip_special_tokens=False)
 
             for rm in self.remote_rm_url:
-                r = remote_rm_fn_ray.remote(rm, queries=queries)
+                r = remote_rm_fn_ray.remote(rm, queries=queries, meta_data=samples.meta_data)
                 r_refs.append(r)
 
         # log probs
@@ -656,8 +659,9 @@ class RemoteExperienceMaker(NaiveExperienceMaker):
         )
 
         # Expand prompt list based on the number of samples per prompt
-        all_prompts = sum([[prompt] * args.n_samples_per_prompt for prompt in all_prompts], [])
-        all_prompt_token_ids = self.tokenize_fn(all_prompts, self.prompt_max_len, padding=False)["input_ids"]
+        prompt_strs = all_prompt["prompt"]
+        prompt_strs = sum([[prompt] * args.n_samples_per_prompt for prompt in prompt_strs], [])
+        all_prompt_token_ids = self.tokenize_fn(prompt_strs, self.prompt_max_len, padding=False)["input_ids"]
 
         # Distribute requests to engines and collect responses to outputs
         all_output_refs = []
@@ -671,10 +675,12 @@ class RemoteExperienceMaker(NaiveExperienceMaker):
 
         # Retrieve and combine results from all outputs
         all_outputs = sum(ray.get(all_output_refs), [])
+        breakpoint()
 
         samples_list = []
         for i in range(0, len(all_outputs), args.micro_rollout_batch_size):
             outputs = all_outputs[i : i + self.strategy.args.micro_rollout_batch_size]
+            meta_data = all_prompts[i : i + self.strategy.args.micro_rollout_batch_size]
             if not self.packing_samples:
                 # NOTE: concat all outputs to following format:
                 #
@@ -717,6 +723,7 @@ class RemoteExperienceMaker(NaiveExperienceMaker):
                         packed_seq_lens=None,
                         response_length=action_mask.float().sum(dim=-1),
                         total_length=attention_mask.float().sum(dim=-1),
+                        meta_data=meta_data,
                     )
                 )
             else:
@@ -754,6 +761,7 @@ class RemoteExperienceMaker(NaiveExperienceMaker):
                         packed_seq_lens=packed_seq_lens,
                         response_length=response_length,
                         total_length=total_length,
+                        meta_data=meta_data,
                     )
                 )
         return samples_list

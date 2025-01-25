@@ -1,3 +1,5 @@
+from typing import Optional, Dict
+
 import time
 import ray
 import requests
@@ -29,20 +31,22 @@ def request_api_wrapper(url, data, score_key="rewards", try_max_times=5):
     raise Exception(f"Request error for {try_max_times} times, returning None. Please check the API server.")
 
 
-def remote_rm_fn(api_url, queries, score_key="rewards"):
+def remote_rm_fn(api_url, queries, meta_data: Optional[Dict] = None, score_key="rewards"):
     """remote reward model API
     api_url: RM API, We assume that the API supports two modes: merging query + response and not merging
     queries: query+response with the template
+    meta_data: other metadata attached the sample that will help with determining the reward value
     design is made optional.
     score_key: RM score key
     """
-    scores = request_api_wrapper(api_url, {"query": queries}, score_key)
+    breakpoint()
+    scores = request_api_wrapper(api_url, {"query": queries, "meta_data": meta_data}, score_key)
     return torch.tensor(scores)
 
 
 @ray.remote
-def remote_rm_fn_ray(api_url, queries, score_key="rewards"):
-    return remote_rm_fn(api_url, queries, score_key)
+def remote_rm_fn_ray(api_url, queries, meta_data: Optional[Dict] = None, score_key="rewards"):
+    return remote_rm_fn(api_url, queries, meta_data=meta_data, score_key=score_key)
 
 
 if __name__ == "__main__":
