@@ -1,8 +1,6 @@
 set -x 
 
 export HF_HUB_ENABLE_HF_TRANSFER=1
-export WANDB_API_KEY=af4facd0e0c0b563b77e102f5b38463adbe786fc
-
 
 python3 -m openrlhf.cli.train_ppo_ray \
    --advantage_estimator reinforce \
@@ -14,13 +12,15 @@ python3 -m openrlhf.cli.train_ppo_ray \
    --vllm_tensor_parallel_size 1 \
    --pretrain meta-llama/Llama-3.2-1B-Instruct \
    --save_steps 10 \
-   --save_path /mnt/local_storage/openrlhf/checkpoint/llama-3.2-1B-Instruct \
+   --save_path /mnt/local_storage/openrlhf/checkpoint/llama-3.2-1B-Instruct/final \
+   --save_hf_ckpt \
+   --ckpt_path /mnt/local_storage/openrlhf/checkpoint/llama-3.2-1B-Instruct/ckpt \
    --micro_train_batch_size 2 \
    --train_batch_size 128 \
    --micro_rollout_batch_size 8 \
    --rollout_batch_size 128 \
    --n_samples_per_prompt 8 \
-   --num_episodes 100 \
+   --num_episodes 20 \
    --max_samples 256 \
    --max_epochs 1 \
    --prompt_max_len 1024 \

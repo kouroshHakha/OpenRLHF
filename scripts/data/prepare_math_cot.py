@@ -294,8 +294,8 @@ def main(pargs):
         stats = check_dataset_contamination(train_ds, test_ds)
         print_contamination_report(stats)
 
-    train_ds.to_json(f"{pargs.dest}/raw_train.json")
-    test_ds.to_json(f"{pargs.dest}/raw_test.json")
+    # train_ds.to_json(f"{pargs.dest}/train.json")
+    # test_ds.to_json(f"{pargs.dest}/test.json")
 
     formated_train_ds = format_ds(train_ds)
     formated_test_ds = format_ds(test_ds)
