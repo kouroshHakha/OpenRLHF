@@ -39,7 +39,10 @@ def remote_rm_fn(api_url, queries, meta_data: Optional[Dict] = None, score_key="
     design is made optional.
     score_key: RM score key
     """
-    scores = request_api_wrapper(api_url, {"query": queries, "meta_data": meta_data}, score_key)
+    from openrlhf.cli.serve_rm_math import compute_math_rewards
+    ground_truths = meta_data.get("gt")
+    scores = compute_math_rewards(queries, ground_truths)
+    # scores = request_api_wrapper(api_url, {"query": queries, "meta_data": meta_data}, score_key)
     return torch.tensor(scores)
 
 

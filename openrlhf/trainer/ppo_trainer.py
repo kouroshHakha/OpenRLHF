@@ -16,6 +16,8 @@ from openrlhf.utils.distributed_sampler import DistributedSampler
 from .ppo_utils import AdaptiveKLController, Experience, FixedKLController, NaiveExperienceMaker, NaiveReplayBuffer
 
 
+MAX_N_SAMPLES_TO_PRINT = 3
+
 class PPOTrainer(ABC):
     """
     Trainer for Proximal Policy Optimization (PPO) algorithm.
@@ -227,14 +229,18 @@ class PPOTrainer(ABC):
                 disable=not self.strategy.is_rank_0(),
             )
 
-            for rand_prompts in self.prompts_dataloader:
+            for prompt_sample_index, rand_prompts in enumerate(self.prompts_dataloader):
                 exp_list = self.experience_maker.make_experience_list(rand_prompts, **self.generate_kwargs)
                 for i, experience in enumerate(exp_list):
                     if i == 0:
-                        output = self.tokenizer.batch_decode(
-                            experience.sequences[0].unsqueeze(0), skip_special_tokens=True
+                        outputs = self.tokenizer.batch_decode(
+                            experience.sequences[:MAX_N_SAMPLES_TO_PRINT].unsqueeze(0), skip_special_tokens=True
                         )
-                        self.strategy.print(output)
+                        self.strategy.print("="*30)
+                        self.strategy.print(f"Sample generations at episode = {episode}, prompt_idx = {prompt_sample_index}\n")
+                        for out in outputs:
+                            self.strategy.print(out)
+                            self.strategy.print("-"*30)
                     self.replay_buffer.append(experience)
 
                 torch.cuda.empty_cache()

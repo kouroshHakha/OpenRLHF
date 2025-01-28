@@ -3,7 +3,6 @@ set -x
 export HF_HUB_ENABLE_HF_TRANSFER=1
 [ -z "${WANDB_API_KEY}" ] && { echo "Error: WANDB_API_KEY is not set"; exit 1; }
 
-
 python3 -m openrlhf.cli.train_ppo_ray \
    --advantage_estimator reinforce \
    --ref_num_nodes 1 \
@@ -12,11 +11,11 @@ python3 -m openrlhf.cli.train_ppo_ray \
    --actor_num_gpus_per_node 4 \
    --vllm_num_engines 2 \
    --vllm_tensor_parallel_size 1 \
-   --pretrain meta-llama/Llama-3.2-1B-Instruct \
+   --pretrain Qwen/Qwen2.5-math-7B \
    --save_steps 10 \
-   --save_path /mnt/local_storage/openrlhf/checkpoint/llama-3.2-1B-Instruct/final \
+   --save_path /mnt/local_storage/openrlhf/checkpoint/Qwen/Qwen2.5-math-7B-gsm8k/final \
    --save_hf_ckpt \
-   --ckpt_path /mnt/local_storage/openrlhf/checkpoint/llama-3.2-1B-Instruct/ckpt \
+   --ckpt_path /mnt/local_storage/openrlhf/checkpoint/Qwen/Qwen2.5-math-7B-gsm8k/ckpt \
    --micro_train_batch_size 2 \
    --train_batch_size 128 \
    --micro_rollout_batch_size 8 \
@@ -26,14 +25,13 @@ python3 -m openrlhf.cli.train_ppo_ray \
    --max_samples 256 \
    --max_epochs 1 \
    --prompt_max_len 1024 \
-   --generate_max_len 4096 \
+   --generate_max_len 3072 \
    --zero_stage 2 \
    --bf16 \
    --actor_learning_rate 5e-7 \
    --init_kl_coef 0.01 \
-   --prompt_data svc-huggingface/math-prompts \
-   --input_key messages \
-   --apply_chat_template \
+   --prompt_data /home/ray/default/data/math_train_data_processed_with_qwen_prompt.json \
+   --input_key input \
    --normalize_reward \
    --adam_offload \
    --flash_attn \
@@ -42,6 +40,8 @@ python3 -m openrlhf.cli.train_ppo_ray \
    --use_wandb $WANDB_API_KEY \
    --wandb_project openrlhf \
    --remote_rm_url http://localhost:5000/get_reward_math
+
+   # --apply_chat_template \
 
    # --packing_samples \
 
