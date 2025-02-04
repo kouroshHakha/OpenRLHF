@@ -21,7 +21,7 @@ python3 -m openrlhf.cli.train_ppo_ray \
    --micro_rollout_batch_size 8 \
    --rollout_batch_size 128 \
    --n_samples_per_prompt 8 \
-   --num_episodes 20 \
+   --num_episodes 40 \
    --max_samples 256 \
    --max_epochs 1 \
    --prompt_max_len 1024 \

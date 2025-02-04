@@ -234,7 +234,7 @@ class PPOTrainer(ABC):
                 for i, experience in enumerate(exp_list):
                     if i == 0:
                         outputs = self.tokenizer.batch_decode(
-                            experience.sequences[:MAX_N_SAMPLES_TO_PRINT].unsqueeze(0), skip_special_tokens=True
+                            experience.sequences[:MAX_N_SAMPLES_TO_PRINT], skip_special_tokens=True
                         )
                         self.strategy.print("="*30)
                         self.strategy.print(f"Sample generations at episode = {episode}, prompt_idx = {prompt_sample_index}\n")
